@@ -114,6 +114,7 @@ async function fetchPayslip(email, password, { last }) {
   for (let { id, name } of filesToDownload) {
     const output = formatPayslipName(name);
     await downloadPayslip(token, id, output);
+    console.log(`Downloaded ${output}`);
   }
 }
 
