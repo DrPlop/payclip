@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "bin": {
     "payclip": "./index.js"
   },
@@ -13,7 +14,7 @@
   "author": "DrPlop",
   "license": "ISC",
   "dependencies": {
-    "commander": "^7.1.0",
-    "node-fetch": "^2.6.1"
+    "commander": "^11.0.0",
+    "node-fetch": "^3.3.2"
   }
 }

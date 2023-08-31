@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const program = require("commander");
+import { Command } from "commander";
+import download from "./src/download.js";
 
-const download = require("./src/download");
-
+const program = new Command();
 program
   .requiredOption("-e, --email <email>")
   .requiredOption("-p, --password <password>")

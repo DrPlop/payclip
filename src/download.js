@@ -1,6 +1,6 @@
-const fetch = require("node-fetch");
-const https = require("https");
-const fs = require("fs");
+import fetch from "node-fetch";
+import https from "node:https";
+import fs from "node:fs";
 
 async function login(email, password) {
   const payload = {
@@ -72,12 +72,12 @@ function downloadPayslip(token, id, output) {
 
 function formatPayslipName(name) {
   return name.replace(
-    /^(\d{4})\-(\d{2}).+/,
+    /^(\d{4})\-?(\d{2}).+/,
     (_, p1, p2) => `Paie_${p1}-${p2}.pdf`
   );
 }
 
-async function fetchPayslip(email, password, { last }) {
+export default async function fetchPayslip(email, password, { last }) {
   const { token, safes } = await login(email, password);
 
   let files = [];
@@ -117,5 +117,3 @@ async function fetchPayslip(email, password, { last }) {
     console.log(`Downloaded ${output}`);
   }
 }
-
-module.exports = fetchPayslip;
