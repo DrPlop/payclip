@@ -14,7 +14,9 @@
   "author": "DrPlop",
   "license": "ISC",
   "dependencies": {
-    "commander": "^11.0.0",
-    "node-fetch": "^3.3.2"
+    "commander": "^11.0.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
