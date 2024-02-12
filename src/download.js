@@ -5,50 +5,34 @@ async function login(email, password) {
   const payload = {
     login: email,
     password: password,
-    nameihm: "mycecurity",
-    language: "fr-fr",
-    attributs: {
-      active_user: false,
-      list_user: [],
-      active_admin: false,
-      list_admin: [],
-    },
-    emailActive: true,
-    tosactivation: 1,
-    hideUser: false,
   };
-  const response = await fetch("https://mycecurity.com/node/v1/users/connect", {
-    method: "POST",
-    cache: "no-cache",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-  return response.json();
-}
-
-async function listItem(token, safeId, folderId) {
   const response = await fetch(
-    `https://mycecurity.com/node/v1/safes/${safeId}/nodes/${folderId}/mycecurity?pageSize=50&pageIndex=0&orderBy=descrip&orderAsc=true&revision=on`,
+    "https://edocperso.fr/index.php?api=Authenticate&a=doAuthentication",
     {
+      method: "POST",
       cache: "no-cache",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify(payload),
     }
   );
   return response.json();
 }
 
-async function listRootFolder(token, safeId) {
+async function fetchLast(token, limit = 10) {
   const response = await fetch(
-    `https://mycecurity.com/node/v1/safes/${safeId}/mycecurity/fr-fr/select?pageSize=50&isUploadedCrypted=false&revision=on&orderBy=descrip&orderAsc=true`,
+    `https://v2-app.edocperso.fr/edocPerso/V1/edpDoc/getLast`,
     {
+      method: "POST",
       cache: "no-cache",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        sessionId: token,
+        limit,
+      }),
     }
   );
   return response.json();
@@ -56,63 +40,42 @@ async function listRootFolder(token, safeId) {
 
 function downloadPayslip(token, id, output) {
   return new Promise((resolve) => {
-    let file = fs.createWriteStream(output);
+    let writable = fs.createWriteStream(output);
     https.get(
-      `https://mycecurity.com/node/v1/safes/146184/downloads/${id}/mycecurity?token=${token}&type=org`,
+      `https://v2-app.edocperso.fr/edocPerso/V1/edpDoc/getDocContent?sessionId=${token}&documentId=${id}`,
       (response) => {
-        response.pipe(file);
-        file.on("finish", () => {
-          file.close(resolve);
+        response.pipe(writable);
+        writable.on("finish", () => {
+          writable.close(resolve);
         });
       }
     );
   });
 }
 
-function formatPayslipName(name) {
-  return name.replace(
-    /^(\d{4})\-?(\d{2}).+/,
-    (_, p1, p2) => `Paie_${p1}-${p2}.pdf`
-  );
+function extractSessionId(payload) {
+  const { loginUrl } = payload.content;
+  return loginUrl.replace("https://v2-app.edocperso.fr/login/", "");
+}
+
+function getFileName(name) {
+  const fileName = name.replaceAll(" ", "_").replaceAll("/", "_");
+  return `./${fileName}.pdf`;
 }
 
 export default async function fetchPayslip(email, password, { last }) {
-  const { token, safes } = await login(email, password);
+  console.log("Fetching last", last, "payslip");
+  const payload = await login(email, password);
+  const sessionId = extractSessionId(payload);
 
-  let files = [];
-  for (let safe of safes) {
-    const { id } = safe;
-    const { nodes } = await listRootFolder(token, id);
+  const lastPayrolls = await fetchLast(sessionId, last);
+  const docs = lastPayrolls.content.edpDocs;
 
-    async function iterate(nodes) {
-      if (!nodes.items) {
-        return;
-      }
-      for (let item of nodes.items) {
-        const { cfecNodeId, fileData } = item;
-        if (fileData) {
-          files.push(item);
-        } else {
-          const items = await listItem(token, id, cfecNodeId);
-          await iterate(items.nodes);
-        }
-      }
-    }
+  docs.forEach(async (doc) => {
+    const { name, id } = doc;
+    const output = getFileName(name);
 
-    await iterate(nodes);
-  }
-
-  files.sort((fileA, fileB) => {
-    const dateA = new Date(fileA.uploadDate).getTime();
-    const dateB = new Date(fileB.uploadDate).getTime();
-
-    return dateA - dateB ? 1 : -1;
-  });
-
-  const filesToDownload = files.slice(0, last);
-  for (let { id, name } of filesToDownload) {
-    const output = formatPayslipName(name);
-    await downloadPayslip(token, id, output);
+    await downloadPayslip(sessionId, id, output);
     console.log(`Downloaded ${output}`);
-  }
+  });
 }
