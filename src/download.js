@@ -58,9 +58,15 @@ function extractSessionId(payload) {
   return loginUrl.replace("https://v2-app.edocperso.fr/login/", "");
 }
 
-function getFileName(name) {
+function getFileName(name, iteration = 0) {
   const fileName = name.replaceAll(" ", "_").replaceAll("/", "_");
-  return `./${fileName}.pdf`;
+  const completeFileName =
+    iteration === 0 ? `./${fileName}.pdf` : `./${fileName}_${iteration}.pdf`;
+
+  if (fs.existsSync(completeFileName)) {
+    return getFileName(name, iteration + 1);
+  }
+  return completeFileName;
 }
 
 export default async function fetchPayslip(email, password, { last }) {
@@ -71,11 +77,11 @@ export default async function fetchPayslip(email, password, { last }) {
   const lastPayrolls = await fetchLast(sessionId, last);
   const docs = lastPayrolls.content.edpDocs;
 
-  docs.forEach(async (doc) => {
+  for (const doc of docs) {
     const { name, id } = doc;
     const output = getFileName(name);
 
     await downloadPayslip(sessionId, id, output);
     console.log(`Downloaded ${output}`);
-  });
+  }
 }
